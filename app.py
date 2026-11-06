@@ -16,8 +16,92 @@ PAGE = """
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Luna</title>
-</head>
-<body>
+</head> 
+<body><button type="button" id="luna-mic">Activar micrófono</button>
+<p id="mic-status" role="status"></p>
+
+<script>
+(() => {
+  const mic = document.getElementById("luna-mic");
+  const status = document.getElementById("mic-status");
+  const field = document.getElementById("message");
+  const listen = document.getElementById("listen");
+
+  if (sessionStorage.getItem("luna-voice-request") === "1") {
+    sessionStorage.removeItem("luna-voice-request");
+    listen?.click();
+  }
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    mic.disabled = true;
+    status.textContent = "Este navegador no admite el reconocimiento de voz.";
+    return;
+  }
+
+  const recognition = new Recognition();
+  recognition.lang = "es-DO";
+  recognition.continuous = true;
+  let active = false;
+  let waitingForQuestion = false;
+  let failed = false;
+
+  mic.onclick = () => {
+    if (active) {
+      recognition.abort();
+      return;
+    }
+
+    failed = false;
+    waitingForQuestion = false;
+
+    try {
+      recognition.start();
+      active = true;
+      mic.textContent = "Desactivar micrófono";
+      status.textContent = "Di «Hola, Luna» o «Buenos días, Luna».";
+    } catch {
+      status.textContent = "No se pudo activar el micrófono. Intenta otra vez.";
+    }
+  };
+
+  recognition.onresult = event => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (!event.results[i].isFinal) continue;
+
+      const phrase = event.results[i][0].transcript.trim();
+      const wake = /^(?:hola|buenos d[ií]as)[ ,]+luna\\b[ ,.:;!?¿¡]*/i;
+
+      if (!waitingForQuestion && !wake.test(phrase)) continue;
+
+      const question = phrase.replace(wake, "").trim();
+      if (!question) {
+        waitingForQuestion = true;
+        status.textContent = "Te escucho. Haz tu pregunta.";
+        continue;
+      }
+
+      field.value = question.slice(0, 2000);
+      sessionStorage.setItem("luna-voice-request", "1");
+      recognition.abort();
+      field.form.requestSubmit();
+      return;
+    }
+  };
+
+  recognition.onerror = event => {
+    if (event.error === "aborted") return;
+    failed = true;
+    status.textContent = "El micrófono se detuvo. Revisa los permisos y vuelve a activarlo.";
+  };
+
+  recognition.onend = () => {
+    active = false;
+    mic.textContent = "Activar micrófono";
+    if (!failed) status.textContent = "Micrófono desactivado.";
+  };
+})();
+</script>
   <h1>Luna</h1>
   <form method="post">
     <label for="message">¿Qué quieres preguntarle a Luna?</label><br>
