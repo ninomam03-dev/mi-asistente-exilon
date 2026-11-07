@@ -181,7 +181,267 @@ PAGE = r"""
     .stage{padding:4px 9px}.orb{width:min(235px,100%,38vh)}.core-status{margin-top:3px;min-height:40px}
     .ambient-line{display:none}.voice-trigger{margin-top:5px;padding:8px 13px}.eyebrow{display:none}
   }
-  @media(prefers-reduced-motion:reduce) {*,*::before,*::after{animation:none!important;transition:none!important}}
+  /* Animaciones controladas por el ajuste de Luna, no anuladas globalmente por el sistema. */
+
+  /* ==========================================================
+     LUNA AI: ANIMACIONES VIVAS (ligeras, CSS/SVG + audio real)
+     Los estados idle / listening / thinking / speaking controlan todo.
+     ========================================================== */
+  .shell {--activity:0;}
+  .stage{isolation:isolate;}
+  .stage>*{position:relative;z-index:2;}
+  .stage::before{animation:breathSky 5s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .starfield{position:absolute;inset:0;overflow:hidden;z-index:0;pointer-events:none;}
+  .starfield .spark{position:absolute;width:2px;height:2px;border-radius:50%;background:#e5faff;
+    box-shadow:0 0 7px 1px rgba(118,221,255,.75);animation:starTwinkle 3s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .starfield .spark.magenta{background:#ffd4f8;box-shadow:0 0 8px 1px rgba(255,90,214,.7);}
+  .constellation-sky{position:absolute;inset:4% 4% auto 4%;width:92%;height:91%;z-index:1;opacity:.7;
+    pointer-events:none;filter:drop-shadow(0 0 4px rgba(105,240,255,.3));}
+  .constellation-sky .constellation{stroke:#8adeff;stroke-width:1.15;fill:none;stroke-linecap:round;stroke-linejoin:round;
+    animation:constellationCycle 36s ease-in-out infinite;animation-play-state:var(--motion-play);opacity:0;}
+  .constellation-sky .constellation:nth-child(2){stroke:#f3a3e7;animation-delay:-24s;}
+  .constellation-sky .constellation:nth-child(3){stroke:#d3a5ff;animation-delay:-12s;}
+  .constellation-sky .point{fill:#fcf4ff;stroke:none;filter:drop-shadow(0 0 4px #aefbff);}
+  .constellation-sky .path{stroke-dasharray:3 4;}
+  .stage .eyebrow{color:#b5eaff;animation:techShimmer 4.5s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .orb{transition:filter .3s ease;will-change:transform;animation:floatCore 5.5s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .orb::before{opacity:.9;animation:coreGlow 3s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .orb::after{opacity:1;animation-duration:8s;}
+  .halo.outer{animation-duration:12s;border-top-width:3px;box-shadow:0 0 19px rgba(95,240,255,.20),inset 0 0 15px rgba(95,240,255,.05);}
+  .halo.middle{animation-duration:18s;box-shadow:0 0 14px rgba(255,83,200,.10);}
+  .halo.inner{animation-duration:8s;}
+  .halo.ticks{animation-duration:27s;opacity:.72;}
+  .orb-star{animation:beacon 2.2s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .orb-star.two{animation-delay:-.7s;}.orb-star.three{animation-delay:-1.4s;}
+  .moon-svg{animation:moonAlive 3.2s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .orbit-curve{animation-duration:14s;}
+  .waveform{height:72px;gap:5px;width:min(360px,92%);margin-top:-8px;
+    transition:filter .2s ease;filter:drop-shadow(0 0 9px rgba(105,240,255,.4));}
+  .waveform i{display:block;flex:1 1 0;max-width:5px;min-width:2px;height:100%;border-radius:999px;
+    transform-origin:center center;transform:scaleY(.16);opacity:.65;
+    background:linear-gradient(180deg,#b8fbff 0%,#78dbff 28%,#c181fa 65%,#ff68cc 100%);
+    box-shadow:0 0 7px rgba(105,240,255,.5);animation:idlePulse 1.8s ease-in-out infinite alternate;
+    animation-play-state:var(--motion-play);will-change:transform;}
+  .waveform i:nth-child(2n){animation-delay:-.43s;}.waveform i:nth-child(3n){animation-delay:-1.12s;}
+  .waveform i:nth-child(5n){animation-delay:-.85s;}.waveform i:nth-child(7n){animation-delay:-.16s;}
+  .shell[data-state="listening"] .waveform{filter:drop-shadow(0 0 16px rgba(93,239,255,.9));}
+  .shell[data-state="listening"] .waveform i{opacity:1;animation:listenPulse .52s ease-in-out infinite alternate;animation-play-state:var(--motion-play);}
+  .shell[data-state="listening"] .orb{filter:drop-shadow(0 0 26px rgba(105,240,255,.4)) drop-shadow(0 0 42px rgba(255,83,200,.24));}
+  .shell[data-state="listening"] .halo.outer{animation-duration:5s;}
+  .shell[data-state="listening"] .moon-svg{animation-duration:1.6s;}
+  .shell[data-state="thinking"] .waveform i{opacity:.85;animation:thinkPulse .66s ease-in-out infinite alternate;animation-play-state:var(--motion-play);}
+  .shell[data-state="thinking"] .halo.outer{animation-duration:2.5s;}
+  .shell[data-state="thinking"] .halo.inner{animation-duration:3s;}
+  .shell[data-state="thinking"] .orb::before{animation-duration:1.4s;}
+  .shell[data-state="speaking"] .waveform{filter:drop-shadow(0 0 15px rgba(255,83,200,.7));}
+  .shell[data-state="speaking"] .waveform i{opacity:1;animation:speechPulse .42s ease-in-out infinite alternate;animation-play-state:var(--motion-play);}
+  .shell[data-state="speaking"] .moon-svg{animation-duration:1.15s;}
+  /* El analizador Web Audio reemplaza la simulación solamente durante captura real. */
+  .shell[data-mic-live="true"][data-state="listening"] .waveform i{animation:none!important;}
+  .shell[data-mic-live="true"][data-state="listening"] .waveform i{transition:transform .06s linear;}
+  .voice-trigger{position:relative;overflow:hidden;transition:background .2s,border-color .2s,box-shadow .2s;
+    border-color:rgba(105,240,255,.65);box-shadow:0 0 22px rgba(105,240,255,.15),inset 0 0 15px rgba(255,83,200,.10);}
+  .voice-trigger::after{content:"";position:absolute;inset:0;transform:translateX(-130%);pointer-events:none;
+    background:linear-gradient(90deg,transparent,rgba(191,248,255,.24),transparent);
+    animation:glide 3.3s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .shell[data-state="listening"] .voice-trigger{box-shadow:0 0 24px rgba(105,240,255,.28),0 0 46px rgba(255,83,200,.13);}
+  .core-status strong{text-shadow:0 0 9px rgba(201,125,255,.20);}
+  .bubble{animation:messageEntry .32s ease both;}
+  .online-dot{animation:beacon 2.6s ease-in-out infinite;animation-play-state:var(--motion-play);}
+  .ambient-line{height:2px;overflow:hidden;position:relative;opacity:.95;
+    background:linear-gradient(90deg,transparent,rgba(105,240,255,.6),rgba(255,83,200,.9),transparent);}
+  .ambient-line::after{content:"";position:absolute;top:0;left:0;height:100%;width:30%;
+    background:linear-gradient(90deg,transparent,#fff,transparent);animation:glide 3.1s linear infinite;animation-play-state:var(--motion-play);}
+  .motion-off *, .motion-off *::before, .motion-off *::after {animation:none!important;transition:none!important;}
+  .motion-off .waveform i{transform:scaleY(.17)!important;}
+  @keyframes floatCore {0%,100%{transform:translateY(-5px)}50%{transform:translateY(8px)}}
+  @keyframes moonAlive {0%,100%{transform:scale(.98);opacity:.90;filter:drop-shadow(0 0 7px rgba(255,83,200,.45))}
+    50%{transform:scale(1.05);opacity:1;filter:drop-shadow(0 0 21px rgba(105,240,255,.62))}}
+  @keyframes breathSky {0%,100%{transform:scale(.98);opacity:.65}50%{transform:scale(1.07);opacity:1}}
+  @keyframes coreGlow {0%,100%{transform:scale(.92);opacity:.5}50%{transform:scale(1.12);opacity:1}}
+  @keyframes idlePulse {0%{transform:scaleY(.09)}100%{transform:scaleY(.26)}}
+  @keyframes listenPulse {0%{transform:scaleY(.14)}100%{transform:scaleY(.89)}}
+  @keyframes speechPulse {0%{transform:scaleY(.20)}100%{transform:scaleY(1)}}
+  @keyframes thinkPulse {0%{transform:scaleY(.20)}100%{transform:scaleY(.64)}}
+  @keyframes constellationCycle {0%,7%{opacity:0}12%,29%{opacity:.8}35%,100%{opacity:0}}
+  @keyframes starTwinkle {0%,100%{opacity:.17;transform:scale(.7)}50%{opacity:.9;transform:scale(1.5)}}
+  @keyframes techShimmer {0%,100%{opacity:.6}50%{opacity:1}}
+  @keyframes beacon {0%,100%{opacity:.5;filter:brightness(1)}50%{opacity:1;filter:brightness(1.7)}}
+  @keyframes glide {to{transform:translateX(390%)}}
+  @keyframes messageEntry {from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+  @media(max-width:740px){.waveform{height:37px;margin-top:-12px;gap:3px}.waveform i{max-width:3px}.constellation-sky{opacity:.4}}
+  @media(max-height:610px) and (min-width:741px){.waveform{height:43px}.orb{width:min(320px,100%,43vh)}}
+
+
+/* LUNA 5.0 | Cyber Celestial — temas, efectos y optimizaciones */
+:root {
+  --l-primary:#bd46ff;--l-secondary:#ff52cd;--l-accent:#8a4cff;
+  --l-primary-rgb:189,70,255;--l-secondary-rgb:255,82,205;
+  --l-base:#070611;--l-panel:#110b20;--l-panel2:#1c1230;
+  --l-text:#fbf4ff;--l-muted:#b8a5cd;--l-border:rgba(210,130,255,.27);
+  --l-moon1:#fff2ff;--l-moon2:#e9a9ff;--l-moon3:#9227de;
+}
+html{color-scheme:dark}
+body {color:var(--l-text);background:var(--l-base)}
+.shell {
+ background:
+   radial-gradient(ellipse at 29% 22%,rgba(var(--l-primary-rgb),.20),transparent 33%),
+   radial-gradient(ellipse at 83% 79%,rgba(var(--l-secondary-rgb),.10),transparent 44%),
+   radial-gradient(ellipse at 50% 68%,rgba(var(--l-primary-rgb),.09),transparent 58%),
+   var(--l-base);
+ color:var(--l-text);
+}
+.shell:before {
+ opacity:.5;
+ background-image:radial-gradient(var(--l-moon1) .8px,transparent 1px),radial-gradient(var(--l-primary) .8px,transparent 1px);
+}
+.shell:after {background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(var(--l-primary-rgb),.05) 3px 4px)}
+.topbar {
+ border-bottom:1px solid var(--l-border);
+ background:linear-gradient(180deg,color-mix(in srgb,var(--l-panel) 92%,transparent),color-mix(in srgb,var(--l-panel) 70%,transparent));
+ box-shadow:0 2px 28px rgba(var(--l-primary-rgb),.07),inset 0 -1px rgba(var(--l-primary-rgb),.08);
+}
+.identity{color:var(--l-text);text-shadow:0 0 18px rgba(var(--l-primary-rgb),.18)}
+.identity em{color:var(--l-primary)}
+.identity svg{filter:drop-shadow(0 0 10px var(--l-primary))}
+.identity svg path{fill:var(--l-primary)}
+.pill,.icon-button {
+ background:color-mix(in srgb,var(--l-panel2) 70%,transparent);
+ color:var(--l-text);border-color:var(--l-border);
+ box-shadow:inset 0 0 12px rgba(var(--l-primary-rgb),.07);
+}
+.pill b{color:var(--l-primary)}
+.icon-button:hover,.icon-button:focus-visible{border-color:var(--l-primary);background:rgba(var(--l-primary-rgb),.15)}
+.rail {
+ background:linear-gradient(180deg,color-mix(in srgb,var(--l-base) 92%,transparent),color-mix(in srgb,var(--l-panel) 73%,transparent));
+ border-right:1px solid var(--l-border);
+}
+.rail-btn{color:var(--l-muted)}
+.rail-btn.active,.rail-btn:hover{
+ background:linear-gradient(130deg,rgba(var(--l-primary-rgb),.22),rgba(var(--l-secondary-rgb),.08));
+ color:var(--l-text);border-color:var(--l-border);box-shadow:inset 0 0 20px rgba(var(--l-primary-rgb),.12),0 0 12px rgba(var(--l-primary-rgb),.08);
+}
+.rail-bottom{color:var(--l-muted)}
+.stage:before{
+ background:radial-gradient(circle,rgba(var(--l-primary-rgb),.22) 0,rgba(var(--l-secondary-rgb),.08) 34%,transparent 68%);
+ animation:breathingFog 10s ease-in-out infinite;animation-play-state:var(--motion-play);
+}
+.stage:after{background:linear-gradient(180deg,transparent,rgba(var(--l-primary-rgb),.22))}
+.eyebrow{color:var(--l-primary);text-shadow:0 0 10px var(--l-primary);font-size:11px;font-weight:600;letter-spacing:4px}
+.orb{filter:drop-shadow(0 0 28px rgba(var(--l-primary-rgb),.20)) drop-shadow(0 0 42px rgba(var(--l-secondary-rgb),.12))}
+.orb::before{background:radial-gradient(circle,rgba(var(--l-primary-rgb),.18),rgba(var(--l-secondary-rgb),.11) 28%,transparent 66%)}
+.orb::after{
+ background:conic-gradient(from 0deg,transparent 0 31deg,var(--l-primary) 40deg 46deg,transparent 51deg 128deg,var(--l-secondary) 133deg 141deg,transparent 146deg 271deg,var(--l-primary) 282deg 289deg,transparent 293deg 360deg);
+}
+.halo.outer{border-color:rgba(var(--l-primary-rgb),.25);border-top:3px solid var(--l-primary);border-bottom:1px dashed var(--l-secondary);filter:drop-shadow(0 0 11px var(--l-primary))}
+.halo.middle{border-color:rgba(var(--l-primary-rgb),.45);border-left:3px solid var(--l-secondary)}
+.halo.inner{border-color:rgba(var(--l-primary-rgb),.26);border-top:3px solid var(--l-primary)}
+.halo.ticks{background:repeating-conic-gradient(from 4deg,var(--l-primary) 0deg 1deg,transparent 1deg 11deg)}
+.moon-svg{filter:drop-shadow(0 0 15px rgba(var(--l-primary-rgb),.72)) drop-shadow(0 0 35px rgba(var(--l-secondary-rgb),.3))}
+#moonshade stop:nth-child(1){stop-color:var(--l-moon1)}
+#moonshade stop:nth-child(2){stop-color:var(--l-moon2)}
+#moonshade stop:nth-child(3){stop-color:var(--l-primary)}
+#moonshade stop:nth-child(4){stop-color:var(--l-moon3)}
+.orbit-curve ellipse{stroke:var(--l-primary)}
+.orbit-curve circle{fill:var(--l-secondary)}
+.orb-star{background:var(--l-moon1);box-shadow:0 0 19px 4px rgba(var(--l-primary-rgb),.8)}
+.constellation-sky .path{stroke:var(--l-primary)}
+.constellation-sky .point{fill:var(--l-moon1);filter:drop-shadow(0 0 6px var(--l-primary))}
+.spark{background:var(--l-primary);box-shadow:0 0 9px var(--l-primary)}
+.spark.magenta{background:var(--l-secondary);box-shadow:0 0 10px var(--l-secondary)}
+.waveform{filter:drop-shadow(0 0 12px rgba(var(--l-primary-rgb),.3))}
+.waveform i{
+ background:linear-gradient(180deg,var(--l-moon1),var(--l-primary),var(--l-secondary));
+ box-shadow:0 0 12px rgba(var(--l-primary-rgb),.46);
+}
+.shell[data-state="listening"] .waveform{filter:drop-shadow(0 0 16px var(--l-primary))}
+.shell[data-state="speaking"] .waveform{filter:drop-shadow(0 0 15px var(--l-secondary))}
+.shell[data-state="listening"] .orb{filter:drop-shadow(0 0 38px var(--l-primary))}
+.core-status strong{color:var(--l-text);text-shadow:0 0 14px rgba(var(--l-primary-rgb),.40)}
+.core-status span{color:var(--l-muted)}
+.voice-trigger{border-color:var(--l-primary);color:var(--l-text);
+ background:linear-gradient(130deg,rgba(var(--l-primary-rgb),.21),rgba(var(--l-secondary-rgb),.09));
+ box-shadow:0 0 22px rgba(var(--l-primary-rgb),.25),inset 0 0 15px rgba(var(--l-primary-rgb),.08)}
+.voice-trigger:hover{background:rgba(var(--l-primary-rgb),.25);border-color:var(--l-moon1)}
+.ambient-line{background:linear-gradient(90deg,transparent,var(--l-primary),var(--l-secondary),transparent);box-shadow:0 0 10px rgba(var(--l-primary-rgb),.45)}
+.conversation{border-color:var(--l-border);
+ background:linear-gradient(160deg,color-mix(in srgb,var(--l-panel) 95%,transparent),color-mix(in srgb,var(--l-base) 92%,transparent));
+}
+.conversation-head{border-bottom:1px solid var(--l-border);color:var(--l-text)}
+.conversation-head small{color:var(--l-muted)}
+.thread{background-image:linear-gradient(rgba(var(--l-primary-rgb),.045) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--l-primary-rgb),.045) 1px,transparent 1px);background-size:32px 32px;}
+.bubble.luna{background:linear-gradient(145deg,color-mix(in srgb,var(--l-panel2) 94%,transparent),color-mix(in srgb,var(--l-panel) 94%,transparent));border:1px solid var(--l-border);color:var(--l-text)}
+.bubble.user{background:linear-gradient(135deg,rgba(var(--l-primary-rgb),.19),rgba(var(--l-secondary-rgb),.13));border:1px solid var(--l-border);color:var(--l-text)}
+.bubble.system{background:color-mix(in srgb,var(--l-panel2) 86%,transparent);border-color:var(--l-border);color:var(--l-text)}
+.bubble-label{color:var(--l-primary)}
+.composer{border-top:1px solid var(--l-border);background:var(--l-panel)}
+.composer textarea{background:var(--l-base);border:1px solid var(--l-border);color:var(--l-text);box-shadow:inset 0 0 12px rgba(var(--l-primary-rgb),.03)}
+.composer textarea:focus{outline:1px solid var(--l-primary);box-shadow:0 0 15px rgba(var(--l-primary-rgb),.15)}
+.composer textarea::placeholder{color:var(--l-muted)}
+.send{background:linear-gradient(130deg,var(--l-primary),var(--l-secondary));color:#fff;box-shadow:0 0 25px rgba(var(--l-primary-rgb),.22)}
+.overlay{background:rgba(3,3,10,.80)}
+.dialog{width:min(690px,100%);max-height:min(88vh,770px);overflow:auto;border:1px solid var(--l-border);background:linear-gradient(165deg,var(--l-panel2),var(--l-panel));color:var(--l-text);box-shadow:0 28px 80px rgba(0,0,0,.65),0 0 35px rgba(var(--l-primary-rgb),.09)}
+.dialog h2{font-size:22px;letter-spacing:.4px}
+.dialog p{color:var(--l-muted)}
+.dialog .subhead{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--l-primary);font-weight:700;margin:22px 0 11px}
+.setting{border-bottom:1px solid var(--l-border);font-size:13px;justify-content:space-between}
+.setting input[type=checkbox]{accent-color:var(--l-primary)}
+.close-dialog{border-color:var(--l-primary);color:var(--l-text);background:rgba(var(--l-primary-rgb),.22)}
+.theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.theme-tile{min-width:0;min-height:90px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;gap:9px;
+ border:1px solid var(--l-border);border-radius:15px;color:var(--l-text);padding:11px;background:var(--l-panel);transition:transform .2s,border-color .2s,box-shadow .2s}
+.theme-tile:hover{transform:translateY(-2px);border-color:var(--l-primary)}
+.theme-tile[aria-pressed="true"]{border-color:var(--l-primary);box-shadow:0 0 0 1px var(--l-primary),0 0 18px rgba(var(--l-primary-rgb),.18)}
+.theme-swatches{height:25px;width:100%;display:flex;align-items:center;gap:7px}
+.theme-dot{width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.5);box-shadow:0 0 15px currentColor}
+.theme-tile small{font-size:11px;font-weight:600;color:inherit}
+.custom-row{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:12px;padding:12px;border:1px solid var(--l-border);border-radius:13px}
+.custom-row label{font-size:12px}
+.custom-row input[type=color]{width:42px;height:32px;padding:2px;border:1px solid var(--l-border);background:var(--l-panel);border-radius:8px;cursor:pointer}
+.custom-btn{border:1px solid var(--l-border);border-radius:11px;background:rgba(var(--l-primary-rgb),.18);color:var(--l-text);padding:8px 10px;font-size:11px}
+.brain-select{border:1px solid var(--l-border);border-radius:10px;color:var(--l-text);background:var(--l-base);padding:7px;width:min(220px,100%)}
+.dialog-note{font-size:11px;line-height:1.5;margin:8px 0}
+.tech-chip{position:absolute;z-index:1;bottom:11%;left:6%;color:var(--l-muted);font-size:9px;letter-spacing:2px;opacity:.6;pointer-events:none}
+.tech-chip.right{left:auto;right:6%}
+.cosmic-ring{position:absolute;inset:1%;border-radius:50%;pointer-events:none;
+ background:conic-gradient(from 0deg,transparent 0deg 42deg,rgba(var(--l-primary-rgb),.14) 43deg 61deg,transparent 62deg 185deg,rgba(var(--l-secondary-rgb),.17) 188deg 198deg,transparent 199deg 360deg);
+ mask:radial-gradient(circle,transparent 64%,#000 65% 66%,transparent 67%);
+ animation:orbit 32s linear infinite reverse;animation-play-state:var(--motion-play)
+}
+.cosmic-mist{position:absolute;inset:7%;border-radius:50%;pointer-events:none;
+ background:conic-gradient(from -12deg,transparent 0deg 70deg,rgba(var(--l-primary-rgb),.28) 101deg,transparent 145deg 230deg,rgba(var(--l-secondary-rgb),.24) 254deg,transparent 311deg 360deg);
+ filter:blur(28px);opacity:.7;animation:cosmicSpin 25s linear infinite;animation-play-state:var(--motion-play)
+}
+.stage-corners{position:absolute;inset:18px;z-index:0;pointer-events:none;opacity:.4;
+ background:linear-gradient(var(--l-primary),var(--l-primary)) top left/27px 1px no-repeat,
+ linear-gradient(var(--l-primary),var(--l-primary)) top left/1px 27px no-repeat,
+ linear-gradient(var(--l-secondary),var(--l-secondary)) bottom right/27px 1px no-repeat,
+ linear-gradient(var(--l-secondary),var(--l-secondary)) bottom right/1px 27px no-repeat;}
+@keyframes cosmicSpin{to{transform:rotate(360deg)}}
+@keyframes breathingFog{50%{transform:scale(1.13);opacity:.55}}
+@media(max-width:750px){.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tech-chip{display:none}.dialog{padding:15px}}
+@media(max-width:430px){.custom-row{gap:7px;flex-wrap:wrap}.theme-grid{gap:7px}.theme-tile{min-height:76px;padding:9px}.dialog{max-height:90vh}}
+/* Tema blanco auténtico; no solo neón blanco sobre fondo negro. */
+html.theme-light{color-scheme:light}
+html.theme-light .identity{color:#1c2033}
+html.theme-light .pill,html.theme-light .icon-button{color:#303347}
+html.theme-light .rail-btn.active,html.theme-light .rail-btn:hover{color:#242439}
+html.theme-light .online-dot{background:#149b6e}
+html.theme-light .voice-trigger{color:#24243a}
+html.theme-light .topbar{background:rgba(255,255,255,.91)}
+html.theme-light .bubble.luna{background:rgba(255,255,255,.88)}
+html.theme-light .bubble.user{background:rgba(216,222,244,.90)}
+html.theme-light .theme-tile{background:#eef0f8}
+html.theme-light .theme-tile small{color:#31364a}
+html.theme-light .close-dialog,html.theme-light .custom-btn{color:#27273b}
+html.theme-light .send{color:#1f1e2f}
+html.theme-light .stage:before{opacity:.25}
+html.eco .shell:after, html.eco .cosmic-mist,html.eco .stage:after{display:none}
+html.eco .orb,html.eco .moon-svg,html.eco .stage:before{filter:none}
+html.eco .spark:nth-child(n+22){display:none}
+html.eco .halo.outer{animation-duration:25s}
+html.sky-off .starfield,html.sky-off .constellation-sky{display:none}
+
 </style>
 </head>
 <body>
@@ -192,9 +452,12 @@ PAGE = r"""
       <span>LUNA <em>AI</em></span>
     </div>
     <div class="top-center"><span class="pill"><span class="online-dot"></span> En línea</span>
-      <span class="pill">✧ Gemini <b>principal</b></span><span class="pill">◇ OpenRouter <b>respaldo</b></span>
+      <span class="pill" id="brainChip">✧ Gemini <b>principal</b> · OpenRouter respaldo</span>
     </div>
-    <div class="top-actions"><button class="icon-button" id="settingsButton" title="Configuración" aria-label="Configuración">⚙</button></div>
+    <div class="top-actions">
+      <button class="icon-button" id="quickTheme" title="Cambiar color de Luna" aria-label="Cambiar tema de color">◈</button>
+      <button class="icon-button" id="settingsButton" title="Configuración" aria-label="Configuración">⚙</button>
+    </div>
   </header>
   <main class="workspace">
     <nav class="rail" aria-label="Menú de Luna">
@@ -213,11 +476,32 @@ PAGE = r"""
       <button class="rail-btn" id="navSettings" title="Ajustes" aria-label="Ajustes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M9 2h6l1 3 3 2 3-1v6l-3 1-1 3 2 3-5 3-2-3-3 0-2 3-5-3 2-3-1-3-3-1V6l3 1 3-2 1-3Z"/></svg><span>Ajustes</span>
       </button>
-      <div class="rail-bottom">LUNA • 1.0</div>
+      <div class="rail-bottom">LUNA · 5.0</div>
     </nav>
     <section class="stage" aria-label="Núcleo visual de Luna">
+      <div class="starfield" id="starfield" aria-hidden="true"></div>
+      <svg class="constellation-sky" viewBox="0 0 480 440" preserveAspectRatio="none" aria-hidden="true">
+        <g class="constellation"><polyline class="path" points="90,105 138,76 175,122 236,150 270,227 322,181 373,250"/>
+          <circle class="point" cx="90" cy="105" r="2.5"/><circle class="point" cx="138" cy="76" r="3.5"/>
+          <circle class="point" cx="175" cy="122" r="2.5"/><circle class="point" cx="236" cy="150" r="3"/>
+          <circle class="point" cx="270" cy="227" r="2.5"/><circle class="point" cx="322" cy="181" r="3"/>
+          <circle class="point" cx="373" cy="250" r="2.5"/></g>
+        <g class="constellation"><polyline class="path" points="65,294 123,244 185,277 242,215 300,259"/>
+          <circle class="point" cx="65" cy="294" r="3"/><circle class="point" cx="123" cy="244" r="2.5"/>
+          <circle class="point" cx="185" cy="277" r="3.5"/><circle class="point" cx="242" cy="215" r="2.5"/>
+          <circle class="point" cx="300" cy="259" r="3"/></g>
+        <g class="constellation"><polyline class="path" points="86,170 147,132 207,162 254,212 317,197 380,144 405,102"/>
+          <circle class="point" cx="86" cy="170" r="3"/><circle class="point" cx="147" cy="132" r="3.5"/>
+          <circle class="point" cx="207" cy="162" r="2.5"/><circle class="point" cx="254" cy="212" r="3"/>
+          <circle class="point" cx="317" cy="197" r="3.5"/><circle class="point" cx="380" cy="144" r="3"/>
+          <circle class="point" cx="405" cy="102" r="2.5"/></g>
+      </svg>
+      <div class="stage-corners" aria-hidden="true"></div>
+      <span class="tech-chip" aria-hidden="true">LUNA / SYNC 03</span>
+      <span class="tech-chip right" aria-hidden="true">CELESTIAL · ACTIVE</span>
       <div class="eyebrow">CYBER LUNAR CORE</div>
       <div class="orb" aria-hidden="true">
+        <div class="cosmic-mist"></div><div class="cosmic-ring"></div>
         <div class="halo outer"></div><div class="halo middle"></div><div class="halo inner"></div><div class="halo ticks"></div>
         <svg class="orbit-curve" viewBox="0 0 300 300"><ellipse cx="150" cy="150" rx="145" ry="40" transform="rotate(-23 150 150)" stroke="#c08bfa" stroke-width=".8" fill="none" opacity=".55"/><circle cx="278" cy="106" r="2.5" fill="#ffe5ff"/></svg>
         <svg class="moon-svg" viewBox="0 0 240 240">
@@ -231,8 +515,8 @@ PAGE = r"""
         </svg>
         <span class="orb-star one"></span><span class="orb-star two"></span><span class="orb-star three"></span>
       </div>
-      <div class="waveform" aria-hidden="true">
-        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <div class="waveform" id="visualizer" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
       </div>
       <div class="core-status" role="status" aria-live="polite"><strong id="stateTitle">Luna está lista</strong><span id="stateMessage">Escribe o pulsa el botón para hablar.</span></div>
       <button id="micButton" class="voice-trigger" type="button">
@@ -254,12 +538,30 @@ PAGE = r"""
 </div>
 <div class="overlay" id="settingsOverlay" hidden>
   <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <h2 id="settingsTitle">Ajustes de Luna</h2>
-    <p>Gemini permanece como cerebro principal y OpenRouter como respaldo automático. Por ahora no hay selección manual de modelo.</p>
-    <label class="setting"><input type="checkbox" id="voiceToggle" checked> Leer las respuestas en voz alta</label>
-    <label class="setting"><input type="checkbox" id="motionToggle" checked> Animaciones del núcleo</label>
-    <p>Si ElevenLabs no está disponible, Luna intentará usar únicamente Microsoft Sabina. Si no existe una voz compatible, responderá por escrito.</p>
-    <button class="close-dialog" id="closeSettings">Cerrar ajustes</button>
+    <h2 id="settingsTitle">⚙ Centro de control de Luna</h2>
+    <p>Personaliza la identidad de Luna. Tus preferencias se guardan en este navegador.</p>
+    <div class="subhead">◈ Apariencia · Escoge tu universo</div>
+    <div class="theme-grid" id="themeGrid" role="group" aria-label="Temas de color"></div>
+    <div class="custom-row">
+      <label for="customColor">✦ Color personalizado</label>
+      <input type="color" id="customColor" value="#bd46ff" aria-label="Elegir color principal">
+      <button class="custom-btn" id="customApply" type="button">Aplicar mi color</button>
+    </div>
+    <div class="subhead">✦ Inteligencia</div>
+    <label class="setting" for="brainChoice">Cerebro principal
+      <select id="brainChoice" class="brain-select">
+        <option value="gemini">Gemini primero · OpenRouter respaldo</option>
+        <option value="openrouter">OpenRouter primero · Gemini respaldo</option>
+      </select>
+    </label>
+    <p class="dialog-note">El cerebro secundario solo se utiliza si el principal falla. OpenRouter gratuito puede elegir modelos diferentes según disponibilidad.</p>
+    <div class="subhead">☾ Experiencia</div>
+    <label class="setting">Leer respuestas en voz alta <input type="checkbox" id="voiceToggle" checked></label>
+    <label class="setting">Animaciones y pulsos <input type="checkbox" id="motionToggle" checked></label>
+    <label class="setting">Cielo y constelaciones <input type="checkbox" id="skyToggle" checked></label>
+    <label class="setting">Modo ligero para ahorrar recursos <input type="checkbox" id="ecoToggle"></label>
+    <p class="dialog-note">Si ElevenLabs no tiene créditos, Luna buscará Microsoft Sabina. Si no está disponible, responderá por escrito. Las barras del micrófono reaccionarán al sonido cuando Chrome permita analizarlo.</p>
+    <button class="close-dialog" id="closeSettings" type="button">Listo · Volver a Luna</button>
   </section>
 </div>
 <script>
@@ -278,6 +580,13 @@ PAGE = r"""
   const settings = document.getElementById("settingsOverlay");
   const voiceToggle = document.getElementById("voiceToggle");
   const motionToggle = document.getElementById("motionToggle");
+  const skyToggle = document.getElementById("skyToggle");
+  const ecoToggle = document.getElementById("ecoToggle");
+  const brainChoice = document.getElementById("brainChoice");
+  const brainChip = document.getElementById("brainChip");
+  const themeGrid = document.getElementById("themeGrid");
+  const customColor = document.getElementById("customColor");
+  const themeQuick = document.getElementById("quickTheme");
   let busy = false;
   let rec = null;
   let elevenUnavailable = false;
@@ -291,6 +600,212 @@ PAGE = r"""
   let reinicioMicrofono = null;
   let enviandoDictado = false;
   let esperaCierre = null;
+
+
+  // Preferencias de Luna: solo se guardan en el navegador, nunca las claves API.
+  const preferenceKey = "luna-ai-prefs-v5";
+  const themes = [
+    {id:"violet",label:"Luna original",primary:"#bd46ff",secondary:"#ff52cd",base:"#070611",panel:"#110b20",panel2:"#1c1230",text:"#fbf4ff",muted:"#b8a5cd",light:false},
+    {id:"scarlet",label:"Cyber Red",primary:"#ff355b",secondary:"#ff944c",base:"#100609",panel:"#200b12",panel2:"#34111c",text:"#fff3f5",muted:"#d6a9b3",light:false},
+    {id:"azure",label:"Neon Blue",primary:"#39a5ff",secondary:"#46eaff",base:"#050d18",panel:"#0a1728",panel2:"#10213a",text:"#eff9ff",muted:"#a0c1d9",light:false},
+    {id:"solar",label:"Solar Gold",primary:"#ffbd35",secondary:"#ff7b35",base:"#120e06",panel:"#201808",panel2:"#352309",text:"#fff9ec",muted:"#d7c6a0",light:false},
+    {id:"white",label:"Lunar White",primary:"#8b70f5",secondary:"#80c5ff",base:"#f4f5fb",panel:"#ffffff",panel2:"#e7eaf5",text:"#20253a",muted:"#606982",light:true},
+    {id:"obsidian",label:"Obsidian",primary:"#929aae",secondary:"#d1d7e9",base:"#050508",panel:"#0e0e15",panel2:"#191923",text:"#f0f0f7",muted:"#a2a2b5",light:false},
+    {id:"emerald",label:"Quantum Green",primary:"#30efb7",secondary:"#58e3e7",base:"#03100d",panel:"#08231c",panel2:"#0e3429",text:"#e9fff7",muted:"#97c7b4",light:false},
+    {id:"rose",label:"Cosmic Rose",primary:"#f961ac",secondary:"#d596ff",base:"#140813",panel:"#210e23",panel2:"#341637",text:"#fff1fb",muted:"#d4acce",light:false}
+  ];
+  let prefs = {theme:"violet",custom:"#bd46ff",brain:"gemini",motion:true,sky:true,eco:false,voice:true};
+  try {
+    const previousPrefs = JSON.parse(localStorage.getItem(preferenceKey) || "{}");
+    if (previousPrefs && typeof previousPrefs === "object" && !Array.isArray(previousPrefs)) {
+      for (const key of Object.keys(prefs)) {
+        if (Object.prototype.hasOwnProperty.call(previousPrefs,key)) prefs[key] = previousPrefs[key];
+      }
+    }
+  } catch (_) {} // En modo privado puede estar bloqueado.
+  function savePrefs(){try{localStorage.setItem(preferenceKey,JSON.stringify(prefs));}catch(_){}}
+  function validHex(value){return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);}
+  function rgbOf(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(",");}
+  function lightenHex(hex,amount){
+    return "#"+[1,3,5].map(i=>Math.round(parseInt(hex.slice(i,i+2),16)+(255-parseInt(hex.slice(i,i+2),16))*amount).toString(16).padStart(2,"0")).join("");
+  }
+  function darkenHex(hex,amount){
+    return "#"+[1,3,5].map(i=>Math.round(parseInt(hex.slice(i,i+2),16)*(1-amount)).toString(16).padStart(2,"0")).join("");
+  }
+  function colorTheme(id){
+    if (id==="custom") {
+      const primary = validHex(prefs.custom) ? prefs.custom : "#bd46ff";
+      return {id:"custom",label:"Personalizado",primary,secondary:lightenHex(primary,.38),base:"#060810",panel:"#0d1220",panel2:"#191d31",text:"#f7f9ff",muted:"#aebcd2",light:false};
+    }
+    return themes.find(t=>t.id===id) || themes[0];
+  }
+  function applyTheme(id,save=true){
+    const theme = colorTheme(id);
+    const root = document.documentElement;
+    root.dataset.theme = theme.id;
+    root.classList.toggle("theme-light",theme.light);
+    root.style.setProperty("--l-primary",theme.primary);
+    root.style.setProperty("--l-secondary",theme.secondary);
+    root.style.setProperty("--l-accent",theme.primary);
+    root.style.setProperty("--l-primary-rgb",rgbOf(theme.primary));
+    root.style.setProperty("--l-secondary-rgb",rgbOf(theme.secondary));
+    root.style.setProperty("--l-base",theme.base);
+    root.style.setProperty("--l-panel",theme.panel);
+    root.style.setProperty("--l-panel2",theme.panel2);
+    root.style.setProperty("--l-text",theme.text);
+    root.style.setProperty("--l-muted",theme.muted);
+    root.style.setProperty("--l-border",`rgba(${rgbOf(theme.primary)},${theme.light?.37:.27})`);
+    root.style.setProperty("--l-moon1",theme.light?"#fcffff":lightenHex(theme.primary,.90));
+    root.style.setProperty("--l-moon2",lightenHex(theme.primary,.63));
+    root.style.setProperty("--l-moon3",darkenHex(theme.primary,.35));
+    document.querySelector('meta[name="theme-color"]').setAttribute("content",theme.base);
+    document.querySelectorAll(".theme-tile").forEach(btn=>btn.setAttribute("aria-pressed",String(btn.dataset.themeId===theme.id)));
+    themeQuick.title = "Tema actual: " + theme.label + " · Cambiar color";
+    if(save){prefs.theme=theme.id;savePrefs();}
+  }
+  function makeThemeButtons(){
+    for(const theme of themes){
+      const btn=document.createElement("button");
+      btn.type="button";btn.className="theme-tile";btn.dataset.themeId=theme.id;
+      btn.setAttribute("aria-label","Activar tema "+theme.label);
+      const colors=document.createElement("span");colors.className="theme-swatches";
+      for(const color of [theme.primary,theme.secondary,theme.base]){
+        const dot=document.createElement("span");dot.className="theme-dot";dot.style.background=color;dot.style.color=color;
+        colors.appendChild(dot);
+      }
+      const name=document.createElement("small");name.textContent=theme.label;
+      btn.append(colors,name);btn.addEventListener("click",()=>applyTheme(theme.id));themeGrid.appendChild(btn);
+    }
+    const custom=document.createElement("button");custom.type="button";custom.className="theme-tile";custom.dataset.themeId="custom";
+    custom.setAttribute("aria-label","Activar último color personalizado");
+    custom.innerHTML='<span class="theme-swatches"><span class="theme-dot" id="customDot"></span> ✦</span><small>Mi color</small>';
+    custom.addEventListener("click",()=>applyTheme("custom"));themeGrid.appendChild(custom);
+  }
+  makeThemeButtons();
+  if(!validHex(prefs.custom)) prefs.custom="#bd46ff";
+  customColor.value=prefs.custom;
+  const customDot=document.getElementById("customDot");
+  function refreshCustomDot(){customDot.style.background=prefs.custom;customDot.style.color=prefs.custom;}
+  refreshCustomDot();
+  document.getElementById("customApply").addEventListener("click",()=>{
+    prefs.custom=customColor.value;refreshCustomDot();applyTheme("custom");
+  });
+  const themeSequence=["violet","scarlet","azure","solar","white","obsidian","emerald","rose"];
+  themeQuick.addEventListener("click",()=>{
+    const index=themeSequence.indexOf(prefs.theme);
+    applyTheme(themeSequence[(index+1)%themeSequence.length]);
+  });
+  applyTheme(prefs.theme,false);
+  motionToggle.checked=prefs.motion!==false;
+  skyToggle.checked=prefs.sky!==false;
+  ecoToggle.checked=prefs.eco===true;
+  voiceToggle.checked=prefs.voice!==false;
+  brainChoice.value=prefs.brain==="openrouter"?"openrouter":"gemini";
+  document.documentElement.classList.toggle("motion-off",!motionToggle.checked);
+  document.documentElement.classList.toggle("sky-off",!skyToggle.checked);
+  document.documentElement.classList.toggle("eco",ecoToggle.checked);
+  document.documentElement.style.setProperty("--motion-play",motionToggle.checked?"running":"paused");
+  function updateBrainBadge(){
+    brainChip.textContent = brainChoice.value==="openrouter"
+      ? "◇ OpenRouter principal · Gemini respaldo"
+      : "✧ Gemini principal · OpenRouter respaldo";
+    brainInfo.textContent = "Preferido: " + (brainChoice.value==="openrouter"?"OpenRouter":"Gemini");
+  }
+  updateBrainBadge();
+  brainChoice.addEventListener("change",()=>{prefs.brain=brainChoice.value;savePrefs();updateBrainBadge();});
+  skyToggle.addEventListener("change",()=>{prefs.sky=skyToggle.checked;document.documentElement.classList.toggle("sky-off",!prefs.sky);savePrefs();});
+  ecoToggle.addEventListener("change",()=>{prefs.eco=ecoToggle.checked;document.documentElement.classList.toggle("eco",prefs.eco);savePrefs();});
+  voiceToggle.addEventListener("change",()=>{prefs.voice=voiceToggle.checked;savePrefs();});
+  // El usuario controla por completo la activación de las animaciones.
+  motionToggle.addEventListener("change",()=>{prefs.motion=motionToggle.checked;savePrefs();});
+
+  // Estrellas de fondo, distribuidas una sola vez. Sin Canvas ni dependencias externas.
+  const starfield = document.getElementById("starfield");
+  for (let index = 0; index < 42; index++) {
+    const spark = document.createElement("span");
+    spark.className = "spark" + (index % 6 === 0 ? " magenta" : "");
+    spark.style.left = ((index * 37 + 13) % 97 + 1) + "%";
+    spark.style.top = ((index * 29 + (index * index) % 23) % 89 + 4) + "%";
+    spark.style.animationDelay = -(index % 17) * .31 + "s";
+    spark.style.animationDuration = (2.2 + (index % 7) * .51) + "s";
+    starfield.appendChild(spark);
+  }
+  const waveBars = Array.from(document.querySelectorAll("#visualizer i"));
+  let audioStream = null;
+  let audioContext = null;
+  let audioAnalyser = null;
+  let frequencies = null;
+  let audioAnimationId = null;
+  let audioSessionId = 0;
+  let audioLastFrame = 0;
+
+  function stopMicrophoneVisualization() {
+    audioSessionId++;
+    if (audioAnimationId !== null) cancelAnimationFrame(audioAnimationId);
+    audioAnimationId = null;
+    shell.dataset.micLive = "false";
+    for (const bar of waveBars) bar.style.removeProperty("transform");
+    if (audioStream) {
+      for (const track of audioStream.getTracks()) track.stop();
+      audioStream = null;
+    }
+    if (audioContext) {
+      audioContext.close().catch(() => {});
+      audioContext = null;
+    }
+    audioAnalyser = null;
+    frequencies = null;
+  }
+
+  // Web Audio muestra el volumen real del micrófono cuando Chrome lo permite.
+  // Si el navegador bloquea una segunda captura, continúa la animación CSS.
+  async function startMicrophoneVisualization() {
+    if (audioStream || audioContext || !dictando || !motionToggle.checked) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const sessionId = ++audioSessionId;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+      if (sessionId !== audioSessionId || !dictando || !motionToggle.checked) {
+        for (const track of stream.getTracks()) track.stop();
+        return;
+      }
+      audioStream = stream;
+      audioContext = new AudioCtx();
+      const source = audioContext.createMediaStreamSource(audioStream);
+      audioAnalyser = audioContext.createAnalyser();
+      audioAnalyser.fftSize = 256;
+      audioAnalyser.smoothingTimeConstant = .68;
+      source.connect(audioAnalyser);
+      frequencies = new Uint8Array(audioAnalyser.frequencyBinCount);
+      await audioContext.resume();
+      if (sessionId !== audioSessionId || !dictando) {stopMicrophoneVisualization();return;}
+      shell.dataset.micLive = "true";
+      function draw(now) {
+        if (sessionId !== audioSessionId || !dictando || !audioAnalyser || !motionToggle.checked) return;
+        audioAnimationId = requestAnimationFrame(draw);
+        if (now - audioLastFrame < 45) return; // unas 22 actualizaciones/s
+        audioLastFrame = now;
+        audioAnalyser.getByteFrequencyData(frequencies);
+        const count = waveBars.length;
+        for (let i = 0; i < count; i++) {
+          // Combinación de bandas bajas y medias de voz, con rango mínimo visible.
+          const bin = Math.min(frequencies.length-1, 2+Math.floor(i*1.2));
+          const v = (frequencies[bin] + frequencies[Math.min(frequencies.length-1,bin+2)]) / 510;
+          const center = 1-Math.abs(i-(count-1)/2)/((count-1)/2);
+          const amp = Math.min(.98, .1 + Math.pow(v, .72)*1.8*(.6+.4*center));
+          waveBars[i].style.transform = "scaleY(" + amp.toFixed(3) + ")";
+        }
+      }
+      audioAnimationId = requestAnimationFrame(draw);
+    } catch (_) {
+      // Fallo visual no afecta al dictado: las barras CSS siguen animadas.
+      if (stream && stream !== audioStream) for (const track of stream.getTracks()) track.stop();
+      stopMicrophoneVisualization();
+    }
+  }
 
   function setState(mode, title, detail) {
     shell.dataset.state = mode;
@@ -322,6 +837,7 @@ PAGE = r"""
     input.scrollTop = input.scrollHeight;
   }
   function stopRecognition() {
+    stopMicrophoneVisualization();
     dictando = false;
     enviandoDictado = false;
     if (reinicioMicrofono !== null) {
@@ -364,6 +880,7 @@ PAGE = r"""
 
   function terminarYEnviar() {
     if (!dictando || enviandoDictado || busy) return;
+    stopMicrophoneVisualization();
     dictando = false;
     enviandoDictado = true;
     if (reinicioMicrofono !== null) {
@@ -436,7 +953,8 @@ PAGE = r"""
     setState("thinking", "Luna está pensando", "Conectando con su cerebro...");
     try {
       const response = await fetch("/api/chat", {
-        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message})
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({message,model_preference:brainChoice.value})
       });
       let data;
       try { data = await response.json(); } catch (_) { throw new Error("El servidor devolvió una respuesta inesperada."); }
@@ -482,6 +1000,7 @@ PAGE = r"""
     recognition.maxAlternatives = 1;
     recognition.onstart = () => {
       if (rec !== recognition) return;
+      startMicrophoneVisualization();
       micText.textContent = "Terminar y enviar";
       setState("listening", "Luna te escucha", "Habla sin prisa. Pulsa «Terminar y enviar» cuando acabes.");
     };
@@ -558,7 +1077,7 @@ PAGE = r"""
   micButton.addEventListener("click",listen);
   document.getElementById("navVoice").addEventListener("click",listen);
   document.getElementById("navChat").addEventListener("click",()=>input.focus());
-  function showSettings(){settings.hidden=false;document.getElementById("closeSettings").focus();}
+  function showSettings(){settings.hidden=false;document.querySelector(".dialog").scrollTop=0;document.getElementById("closeSettings").focus({preventScroll:true});}
   function hideSettings(){settings.hidden=true;document.getElementById("settingsButton").focus();}
   document.getElementById("settingsButton").addEventListener("click",showSettings);
   document.getElementById("navSettings").addEventListener("click",showSettings);
@@ -566,11 +1085,12 @@ PAGE = r"""
   settings.addEventListener("click",e=>{if(e.target===settings)hideSettings();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!settings.hidden)hideSettings();});
   motionToggle.addEventListener("change",()=>{
-    document.documentElement.style.setProperty('--motion-play', motionToggle.checked ? 'running' : 'paused');
-    document.querySelectorAll(".waveform i,.halo,.moon-svg,.orbit-curve,.identity em").forEach(el=>{
-      el.style.animationPlayState = motionToggle.checked ? "running" : "paused";
-    });
+    document.documentElement.classList.toggle("motion-off", !motionToggle.checked);
+    document.documentElement.style.setProperty("--motion-play", motionToggle.checked ? "running" : "paused");
+    if (!motionToggle.checked) stopMicrophoneVisualization();
+    else if (dictando) startMicrophoneVisualization();
   });
+  // Respetar la elección guardada del usuario desde el primer render.
 })();
 </script>
 </body>
@@ -588,51 +1108,109 @@ def home():
 
 
 # ==========================================
-# CEREBRO PRINCIPAL: GEMINI
-# RESPALDO: OPENROUTER GRATIS
+# LUNA AI — Selección de cerebro con respaldo
+# Sin cambiar las claves existentes en Render.
 # ==========================================
+
+def _gemini_answer(message, instrucciones):
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("Gemini sin clave configurada")
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/"
+        "models/gemini-3.1-flash-lite:generateContent"
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": instrucciones}]},
+        "contents": [{"role": "user", "parts": [{"text": message}]}],
+        "generationConfig": {"maxOutputTokens": 512},
+    }
+    req = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        method="POST",
+    )
+    with urlopen(req, timeout=25) as response:
+        result = json.load(response)
+    candidates = result.get("candidates") or []
+    parts = (
+        candidates[0].get("content", {}).get("parts", [])
+        if candidates and isinstance(candidates[0], dict) else []
+    )
+    answer = "".join(
+        part.get("text", "") for part in parts
+        if isinstance(part, dict) and not part.get("thought")
+    ).strip()
+    if not answer:
+        raise ValueError("Gemini devolvió una respuesta vacía")
+    return {"reply": answer, "brain": "Gemini"}
+
+
+def _openrouter_answer(message, instrucciones):
+    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("OpenRouter sin clave configurada")
+    payload = {
+        "model": "openrouter/free",
+        "messages": [
+            {"role": "system", "content": instrucciones},
+            {"role": "user", "content": message},
+        ],
+        "max_tokens": 512,
+    }
+    req = Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {key}",
+            "X-Title": "Luna AI",
+        },
+        method="POST",
+    )
+    with urlopen(req, timeout=40) as response:
+        result = json.load(response)
+    choices = result.get("choices") or []
+    if not choices:
+        raise ValueError("OpenRouter no devolvió respuestas")
+    content = choices[0].get("message", {}).get("content", "")
+    if isinstance(content, list):
+        answer = "".join(
+            item.get("text", "") for item in content
+            if isinstance(item, dict)
+        ).strip()
+    elif isinstance(content, str):
+        answer = content.strip()
+    else:
+        answer = ""
+    if not answer:
+        raise ValueError("OpenRouter devolvió una respuesta vacía")
+    return {
+        "reply": answer,
+        "brain": "OpenRouter",
+        "model": result.get("model", "openrouter/free"),
+    }
+
 
 @app.post("/api/chat")
 def chat():
-
     data = request.get_json(silent=True) or {}
-
     message = str(data.get("message", "")).strip()
-
     if not message or len(message) > 2000:
-        return jsonify(
-            error="Escribe un mensaje de hasta 2000 caracteres."
-        ), 400
+        return jsonify(error="Escribe un mensaje de hasta 2000 caracteres."), 400
 
-    # Fecha y hora de República Dominicana
-
-    now = datetime.now(
-        ZoneInfo("America/Santo_Domingo")
-    )
-
-    weekdays = [
-        "lunes", "martes", "miércoles",
-        "jueves", "viernes", "sábado", "domingo"
-    ]
-
+    now = datetime.now(ZoneInfo("America/Santo_Domingo"))
+    weekdays = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
     months = [
-        "enero", "febrero", "marzo", "abril",
-        "mayo", "junio", "julio", "agosto",
-        "septiembre", "octubre", "noviembre", "diciembre"
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
     ]
-
-    fecha = (
-        f"{weekdays[now.weekday()]} "
-        f"{now.day} de {months[now.month - 1]} "
-        f"de {now.year}"
-    )
-
+    fecha = f"{weekdays[now.weekday()]} {now.day} de {months[now.month-1]} de {now.year}"
     hora = now.strftime("%H:%M")
-
     instrucciones = (
-        "Eres Luna, una asistente personal femenina, "
-        "amable, inteligente, tierna y comprensiva. "
-        "Habla naturalmente en español. "
+        "Eres Luna, una asistente personal femenina, amable, inteligente, "
+        "tierna y comprensiva. Habla naturalmente en español. "
         "Responde de forma clara y normalmente breve. "
         "No repitas innecesariamente las respuestas. "
         "Tu personalidad es cercana y conversacional. "
@@ -642,232 +1220,28 @@ def chat():
         "Utiliza esa fecha para responder preguntas temporales."
     )
 
-    # ======================================
-    # INTENTAR GEMINI PRIMERO
-    # ======================================
-
-    gemini_key = os.environ.get(
-        "GEMINI_API_KEY", ""
-    ).strip()
-
-    if gemini_key:
-
-        gemini_url = (
-            "https://generativelanguage.googleapis.com/v1beta/"
-            "models/gemini-3.1-flash-lite:generateContent"
-        )
-
-        gemini_payload = {
-            "systemInstruction": {
-                "parts": [
-                    {"text": instrucciones}
-                ]
-            },
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": message}
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "maxOutputTokens": 512
-            }
-        }
-
-        gemini_request = Request(
-            gemini_url,
-            data=json.dumps(
-                gemini_payload
-            ).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": gemini_key
-            },
-            method="POST"
-        )
-
+    preference = str(data.get("model_preference", "gemini")).lower()
+    order = (
+        [("OpenRouter", _openrouter_answer), ("Gemini", _gemini_answer)]
+        if preference == "openrouter" else
+        [("Gemini", _gemini_answer), ("OpenRouter", _openrouter_answer)]
+    )
+    errors = []
+    for name, provider in order:
         try:
-            with urlopen(
-                gemini_request,
-                timeout=25
-            ) as response:
-                result = json.load(response)
-
-            candidates = result.get("candidates") or []
-
-            parts = (
-                candidates[0]
-                .get("content", {})
-                .get("parts", [])
-                if candidates else []
-            )
-
-            answer = "".join(
-                part.get("text", "")
-                for part in parts
-                if isinstance(part, dict)
-                and not part.get("thought")
-            ).strip()
-
-            if answer:
-                return jsonify(
-                    reply=answer,
-                    brain="Gemini"
-                )
-
-            app.logger.warning(
-                "Gemini devolvió una respuesta vacía."
-            )
-
+            response = provider(message, instrucciones)
+            response["preferred_brain"] = order[0][0]
+            return jsonify(response)
         except HTTPError as error:
-
-            app.logger.warning(
-                "Gemini devolvió HTTP %s.",
-                error.code
-            )
-
-            # Errores que admiten respaldo
-            if error.code not in (
-                429, 500, 502, 503, 504
-            ):
-                return jsonify(
-                    error=f"Gemini devolvió HTTP {error.code}."
-                ), 502
-
+            app.logger.warning("%s devolvió HTTP %s", name, error.code)
+            errors.append(f"{name}: HTTP {error.code}")
         except (URLError, TimeoutError):
-            app.logger.warning(
-                "No fue posible conectar con Gemini."
-            )
-
-        except (ValueError, KeyError, TypeError):
-            app.logger.warning(
-                "Gemini devolvió datos inesperados."
-            )
-
-    # ======================================
-    # RESPALDO: OPENROUTER
-    # ======================================
-
-    app.logger.info(
-        "Intentando responder mediante OpenRouter."
-    )
-
-    router_key = os.environ.get(
-        "OPENROUTER_API_KEY", ""
-    ).strip()
-
-    if not router_key:
-        return jsonify(
-            error=(
-                "Gemini no está disponible y falta "
-                "OPENROUTER_API_KEY en Render."
-            )
-        ), 503
-
-    router_url = (
-        "https://openrouter.ai/api/v1/chat/completions"
-    )
-
-    router_payload = {
-        "model": "openrouter/free",
-        "messages": [
-            {
-                "role": "system",
-                "content": instrucciones
-            },
-            {
-                "role": "user",
-                "content": message
-            }
-        ],
-        "max_tokens": 512
-    }
-
-    router_request = Request(
-        router_url,
-        data=json.dumps(
-            router_payload
-        ).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {router_key}",
-            "X-Title": "Luna AI"
-        },
-        method="POST"
-    )
-
-    try:
-        with urlopen(
-            router_request,
-            timeout=40
-        ) as response:
-            result = json.load(response)
-
-        choices = result.get("choices") or []
-
-        if not choices:
-            return jsonify(
-                error="OpenRouter no devolvió respuestas."
-            ), 502
-
-        content = (
-            choices[0]
-            .get("message", {})
-            .get("content", "")
-        )
-
-        if isinstance(content, str):
-            answer = content.strip()
-
-        elif isinstance(content, list):
-            answer = "".join(
-                item.get("text", "")
-                for item in content
-                if isinstance(item, dict)
-            ).strip()
-
-        else:
-            answer = ""
-
-        if not answer:
-            return jsonify(
-                error="OpenRouter devolvió una respuesta vacía."
-            ), 502
-
-        return jsonify(
-            reply=answer,
-            brain="OpenRouter",
-            model=result.get(
-                "model",
-                "openrouter/free"
-            )
-        )
-
-    except HTTPError as error:
-
-        app.logger.error(
-            "OpenRouter devolvió HTTP %s.",
-            error.code
-        )
-
-        return jsonify(
-            error=(
-                f"OpenRouter devolvió HTTP {error.code}. "
-                "Revisa los límites y permisos de la clave."
-            )
-        ), 502
-
-    except (URLError, TimeoutError):
-        return jsonify(
-            error="No se pudo conectar con OpenRouter."
-        ), 502
-
-    except (ValueError, KeyError, TypeError):
-        return jsonify(
-            error="OpenRouter devolvió datos inesperados."
-        ), 502
+            app.logger.warning("No se pudo conectar con %s", name)
+            errors.append(f"{name}: sin conexión")
+        except (ValueError, KeyError, TypeError, RuntimeError) as error:
+            app.logger.warning("%s no pudo responder: %s", name, str(error)[:160])
+            errors.append(f"{name}: {str(error)[:80]}")
+    return jsonify(error="Los dos cerebros están indisponibles. " + " | ".join(errors)), 503
 
 
 # ==========================================
