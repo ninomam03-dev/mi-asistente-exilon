@@ -1,3 +1,4 @@
+
 import json
 import os
 from urllib.error import HTTPError, URLError
@@ -57,6 +58,7 @@ PAGE = """
   <h2>Respuesta</h2>
   <div id="reply"></div>
 </main>
+
 <script>
 const form = document.getElementById("form");
 const input = document.getElementById("message");
@@ -78,8 +80,12 @@ async function askLuna(text) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({message})
     });
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "No se pudo obtener respuesta.");
+
+    if (!response.ok) {
+      throw new Error(data.error || "No se pudo obtener respuesta.");
+    }
 
     replyBox.textContent = data.reply;
     statusBox.textContent = "Respuesta lista. Preparando la voz…";
@@ -92,15 +98,19 @@ async function askLuna(text) {
 
     if (!audioResponse.ok) {
       const errorData = await audioResponse.json();
-      statusBox.textContent = errorData.error || "La respuesta llegó, pero falló la voz.";
+      statusBox.textContent =
+        errorData.error || "La respuesta llegó, pero falló la voz.";
       return;
     }
 
     const audioUrl = URL.createObjectURL(await audioResponse.blob());
     const audio = new Audio(audioUrl);
+
     audio.onended = () => URL.revokeObjectURL(audioUrl);
+
     await audio.play();
     statusBox.textContent = "Luna respondió.";
+
   } catch (error) {
     statusBox.textContent = error.message || "Ocurrió un error.";
   }
@@ -111,10 +121,13 @@ form.addEventListener("submit", (event) => {
   askLuna(input.value);
 });
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
 document.getElementById("mic").addEventListener("click", () => {
   if (!SpeechRecognition) {
-    statusBox.textContent = "Este navegador no ofrece reconocimiento de voz. Prueba Chrome.";
+    statusBox.textContent =
+      "Este navegador no ofrece reconocimiento de voz. Prueba Chrome.";
     return;
   }
 
@@ -128,18 +141,23 @@ document.getElementById("mic").addEventListener("click", () => {
     document.getElementById("mic").hidden = true;
     document.getElementById("stop").hidden = false;
   };
+
   recognition.onresult = (event) => {
     const spokenText = event.results[0][0].transcript;
     input.value = spokenText;
     askLuna(spokenText);
   };
+
   recognition.onerror = () => {
-    statusBox.textContent = "No pude reconocer lo que dijiste. Revisa el permiso del micrófono.";
+    statusBox.textContent =
+      "No pude reconocer lo que dijiste. Revisa el permiso del micrófono.";
   };
+
   recognition.onend = () => {
     document.getElementById("mic").hidden = false;
     document.getElementById("stop").hidden = true;
   };
+
   recognition.start();
 });
 
@@ -163,16 +181,22 @@ def chat():
     message = str(data.get("message", "")).strip()
 
     if not message or len(message) > 2000:
-        return jsonify(error="Escribe un mensaje de hasta 2000 caracteres."), 400
+        return jsonify(
+            error="Escribe un mensaje de hasta 2000 caracteres."
+        ), 400
 
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
     if not api_key:
-        return jsonify(error="Falta configurar GEMINI_API_KEY en Render."), 500
+        return jsonify(
+            error="Falta configurar GEMINI_API_KEY en Render."
+        ), 500
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/"
         "models/gemini-3.1-flash-lite:generateContent"
     )
+
     payload = {
         "systemInstruction": {
             "parts": [{
@@ -185,6 +209,7 @@ def chat():
         "contents": [{"parts": [{"text": message}]}],
         "generationConfig": {"maxOutputTokens": 512},
     }
+
     api_request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -198,21 +223,40 @@ def chat():
     try:
         with urlopen(api_request, timeout=30) as response:
             result = json.load(response)
+
     except HTTPError as error:
         if error.code == 429:
-            return jsonify(error="Gemini alcanzó un límite de uso; inténtalo más tarde."), 429
-        return jsonify(error=f"Gemini devolvió HTTP {error.code}."), 502
+            return jsonify(
+                error="Gemini alcanzó un límite de uso; inténtalo más tarde."
+            ), 429
+
+        return jsonify(
+            error=f"Gemini devolvió HTTP {error.code}."
+        ), 502
+
     except (URLError, TimeoutError):
-        return jsonify(error="No se pudo conectar con Gemini."), 502
+        return jsonify(
+            error="No se pudo conectar con Gemini."
+        ), 502
 
     candidates = result.get("candidates") or []
-    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+
+    parts = (
+        candidates[0].get("content", {}).get("parts", [])
+        if candidates else []
+    )
+
     answer = "".join(
-        part.get("text", "") for part in parts if not part.get("thought")
+        part.get("text", "")
+        for part in parts
+        if not part.get("thought")
     ).strip()
 
     if not answer:
-        return jsonify(error="Gemini no devolvió una respuesta de texto."), 502
+        return jsonify(
+            error="Gemini no devolvió una respuesta de texto."
+        ), 502
+
     return jsonify(reply=answer)
 
 
@@ -222,22 +266,28 @@ def speak():
     text = str(data.get("text", "")).strip()
 
     if not text:
-        return jsonify(error="No hay texto para convertir a voz."), 400
+        return jsonify(
+            error="No hay texto para convertir a voz."
+        ), 400
 
     api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
 
     if not api_key or not voice_id:
-        return jsonify(error="Falta configurar la clave o el ID de voz de ElevenLabs en Render."), 500
+        return jsonify(
+            error="Falta configurar la clave o el ID de voz de ElevenLabs en Render."
+        ), 500
 
     url = (
         "https://api.elevenlabs.io/v1/text-to-speech/"
         f"{quote(voice_id, safe='')}?output_format=mp3_44100_128"
     )
+
     payload = {
         "text": text[:2000],
         "model_id": "eleven_multilingual_v2",
     }
+
     api_request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -252,13 +302,67 @@ def speak():
     try:
         with urlopen(api_request, timeout=30) as response:
             audio = response.read()
+
         from flask import Response
         return Response(audio, mimetype="audio/mpeg")
+
+    # NUEVO: Identificar el error real de ElevenLabs
     except HTTPError as error:
-        return jsonify(error=f"ElevenLabs rechazó la solicitud (HTTP {error.code}). Revisa el acceso de la clave al texto a voz y que el ID de voz sea correcto."), 502
+        raw = error.read().decode("utf-8", errors="replace")
+
+        try:
+            error_data = json.loads(raw)
+        except json.JSONDecodeError:
+            error_data = {}
+
+        if not isinstance(error_data, dict):
+            error_data = {}
+
+        detail = error_data.get("detail", {})
+
+        if isinstance(detail, dict):
+            error_code = (
+                detail.get("status")
+                or detail.get("code")
+                or "desconocido"
+            )
+            error_message = (
+                detail.get("message")
+                or "No se proporcionaron detalles."
+            )
+
+        elif isinstance(detail, str):
+            error_code = "desconocido"
+            error_message = detail
+
+        else:
+            error_code = "desconocido"
+            error_message = "No se proporcionaron detalles."
+
+        error_message = str(error_message)[:300]
+
+        app.logger.error(
+            "ElevenLabs HTTP %s | Código: %s | Mensaje: %s",
+            error.code,
+            error_code,
+            error_message
+        )
+
+        return jsonify(
+            error=(
+                f"ElevenLabs HTTP {error.code}: "
+                f"{error_code} - {error_message}"
+            )
+        ), 502
+
     except (URLError, TimeoutError):
-        return jsonify(error="No se pudo conectar con ElevenLabs."), 502
+        return jsonify(
+            error="No se pudo conectar con ElevenLabs."
+        ), 502
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "5000"))
+    )
