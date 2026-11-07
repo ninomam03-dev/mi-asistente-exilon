@@ -1,11 +1,10 @@
-
 import json
 import os
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from flask import Flask, Response, render_template_string, request
+from flask import Flask, jsonify, render_template_string, request
 
 app = Flask(__name__)
 
@@ -15,177 +14,160 @@ PAGE = """
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Luna</title>
-</head> 
+  <title>Luna AI</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #07111d; color: #eaf6ff;
+      font: 16px Arial, sans-serif;
+    }
+    main {
+      width: min(700px, 90vw); padding: 28px; border: 1px solid #16435a;
+      border-radius: 20px; background: #0c1b2a;
+      box-shadow: 0 0 40px #00c8ff22;
+    }
+    h1 { color: #55dcff; margin-top: 0; }
+    textarea {
+      box-sizing: border-box; width: 100%; min-height: 100px; padding: 12px;
+      color: white; background: #07111d; border: 1px solid #27627b;
+      border-radius: 10px; font: inherit;
+    }
+    button {
+      margin: 10px 8px 0 0; padding: 10px 16px; border: 0;
+      border-radius: 9px; cursor: pointer; color: #06121a; background: #55dcff;
+      font-weight: bold;
+    }
+    #reply { white-space: pre-wrap; line-height: 1.5; }
+    #status { color: #9bb6c6; min-height: 24px; }
+  </style>
+</head>
 <body>
-  <h1>Luna</h1>
-  <form method="post">
-    <label for="message">¿Qué quieres preguntarle a Luna?</label><br>
-    <textarea id="message" name="message" rows="4" cols="36"
-              maxlength="2000" required>{{ message }}</textarea><br>
-    <button type="submit">Enviar</button>
+<main>
+  <h1>Luna AI</h1>
+  <p>Pregúntame algo o activa el micrófono y habla.</p>
+  <form id="form">
+    <textarea id="message" maxlength="2000" placeholder="Escribe aquí…"></textarea>
+    <div>
+      <button type="submit">Enviar</button>
+      <button type="button" id="mic">🎙 Activar micrófono</button>
+      <button type="button" id="stop" hidden>Detener micrófono</button>
+    </div>
   </form>
-
-  {% if error %}
-    <p role="alert">{{ error }}</p>
-  {% endif %}
-
-  {% if reply %}
-    <h2>Respuesta de Luna</h2>
-    <p style="white-space: pre-wrap">{{ reply }}</p>
-    <button type="button" id="listen">Escuchar con Bella</button>
-    <p id="audio-status" role="status"></p>
-    <audio id="luna-audio" controls hidden></audio>
-
-    <script>
-      const listen = document.getElementById("listen");
-      const audio = document.getElementById("luna-audio");
-      const audioStatus = document.getElementById("audio-status");
-      const replyText = {{ reply | tojson }};
-
-      listen.addEventListener("click", async () => {
-        listen.disabled = true;
-        audioStatus.textContent = "Preparando la voz de Bella…";
-
-        try {
-          if (!audio.hasAttribute("src")) {
-            const response = await fetch({{ url_for("voz") | tojson }}, {
-              method: "POST",
-              body: new URLSearchParams({ text: replyText })
-            });
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-            audio.src = URL.createObjectURL(await response.blob());
-            audio.hidden = false;
-          }
-
-          try {
-            await audio.play();
-            audioStatus.textContent = "";
-          } catch {
-            audioStatus.textContent = "Pulsa ▶ en el reproductor para escuchar.";
-          }
-        } catch (error) {
-          audioStatus.textContent = error.message;
-        } finally {
-          listen.disabled = false;
-        }
-      });
-    </script>
-  {% endif %}
-<button type="button" id="luna-mic">Activar micrófono</button>
-<p id="mic-status" role="status"></p>
-
+  <p id="status" aria-live="polite"></p>
+  <h2>Respuesta</h2>
+  <div id="reply"></div>
+</main>
 <script>
-(() => {
-  const mic = document.getElementById("luna-mic");
-  const status = document.getElementById("mic-status");
-  const field = document.getElementById("message");
-  const listen = document.getElementById("listen");
+const form = document.getElementById("form");
+const input = document.getElementById("message");
+const replyBox = document.getElementById("reply");
+const statusBox = document.getElementById("status");
+let recognition = null;
 
-  if (sessionStorage.getItem("luna-voice-request") === "1") {
-    sessionStorage.removeItem("luna-voice-request");
-    listen?.click();
+async function askLuna(text) {
+  const message = text.trim();
+  if (!message) return;
+
+  input.value = message;
+  statusBox.textContent = "Luna está pensando…";
+  replyBox.textContent = "";
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "No se pudo obtener respuesta.");
+
+    replyBox.textContent = data.reply;
+    statusBox.textContent = "Respuesta lista. Preparando la voz…";
+
+    const audioResponse = await fetch("/api/speak", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: data.reply})
+    });
+
+    if (!audioResponse.ok) {
+      const errorData = await audioResponse.json();
+      statusBox.textContent = errorData.error || "La respuesta llegó, pero falló la voz.";
+      return;
+    }
+
+    const audioUrl = URL.createObjectURL(await audioResponse.blob());
+    const audio = new Audio(audioUrl);
+    audio.onended = () => URL.revokeObjectURL(audioUrl);
+    await audio.play();
+    statusBox.textContent = "Luna respondió.";
+  } catch (error) {
+    statusBox.textContent = error.message || "Ocurrió un error.";
   }
+}
 
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Recognition) {
-    mic.disabled = true;
-    status.textContent = "Este navegador no admite el reconocimiento de voz.";
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  askLuna(input.value);
+});
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+document.getElementById("mic").addEventListener("click", () => {
+  if (!SpeechRecognition) {
+    statusBox.textContent = "Este navegador no ofrece reconocimiento de voz. Prueba Chrome.";
     return;
   }
 
-  const recognition = new Recognition();
+  recognition = new SpeechRecognition();
   recognition.lang = "es-DO";
-  recognition.continuous = true;
-  let active = false;
-  let waitingForQuestion = false;
-  let failed = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
 
-  mic.onclick = () => {
-    if (active) {
-      recognition.abort();
-      return;
-    }
-
-    failed = false;
-    waitingForQuestion = false;
-
-    try {
-      recognition.start();
-      active = true;
-      mic.textContent = "Desactivar micrófono";
-      status.textContent = "Di «Hola, Luna» o «Buenos días, Luna».";
-    } catch {
-      status.textContent = "No se pudo activar el micrófono. Intenta otra vez.";
-    }
+  recognition.onstart = () => {
+    statusBox.textContent = "Te escucho…";
+    document.getElementById("mic").hidden = true;
+    document.getElementById("stop").hidden = false;
   };
-
-  recognition.onresult = event => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (!event.results[i].isFinal) continue;
-
-      const phrase = event.results[i][0].transcript.trim();
-      status.textContent = "Escuché: «" + phrase + "»";
-      const wake = /^[¡¿ ]*(?:hola|buenos d[ií]as)[ ,.]+luna\\b[ ,.:;!?¿¡]*/i;
-
-      if (!waitingForQuestion && !wake.test(phrase)) continue;
-
-      const question = phrase.replace(wake, "").trim();
-      if (!question) {
-        waitingForQuestion = true;
-        status.textContent = "Te escucho. Haz tu pregunta.";
-        continue;
-      }
-
-      field.value = question.slice(0, 2000);
-      sessionStorage.setItem("luna-voice-request", "1");
-      recognition.abort();
-      field.form.requestSubmit();
-      return;
-    }
+  recognition.onresult = (event) => {
+    const spokenText = event.results[0][0].transcript;
+    input.value = spokenText;
+    askLuna(spokenText);
   };
-
-  recognition.onerror = event => {
-    if (event.error === "aborted") return;
-    failed = true;
-    status.textContent = "El micrófono se detuvo. Revisa los permisos y vuelve a activarlo.";
+  recognition.onerror = () => {
+    statusBox.textContent = "No pude reconocer lo que dijiste. Revisa el permiso del micrófono.";
   };
-
   recognition.onend = () => {
-    active = false;
-    mic.textContent = "Activar micrófono";
-    if (!failed) status.textContent += " (Micrófono desactivado).";
+    document.getElementById("mic").hidden = false;
+    document.getElementById("stop").hidden = true;
   };
-})();
+  recognition.start();
+});
+
+document.getElementById("stop").addEventListener("click", () => {
+  if (recognition) recognition.stop();
+});
 </script>
 </body>
 </html>
 """
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.get("/")
 def home():
-    message = request.form.get("message", "").strip()
-    reply = ""
-    error = ""
-
-    if request.method == "POST":
-        if not message or len(message) > 2000:
-            error = "Escribe un mensaje de 1 a 2000 caracteres."
-        else:
-            reply, error = ask_gemini(message)
-
-    return render_template_string(
-        PAGE, message=message, reply=reply, error=error
-    )
+    return render_template_string(PAGE)
 
 
-def ask_gemini(message):
+@app.post("/api/chat")
+def chat():
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message", "")).strip()
+
+    if not message or len(message) > 2000:
+        return jsonify(error="Escribe un mensaje de hasta 2000 caracteres."), 400
+
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
-        return "", "Falta configurar GEMINI_API_KEY en Render."
+        return jsonify(error="Falta configurar GEMINI_API_KEY en Render."), 500
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/"
@@ -196,8 +178,7 @@ def ask_gemini(message):
             "parts": [{
                 "text": (
                     "Eres Luna, una asistente personal. "
-                    "Preséntate como Luna si te preguntan tu nombre. "
-                    "Responde en español salvo que te pidan otro idioma."
+                    "Responde en español y de forma clara."
                 )
             }]
         },
@@ -215,50 +196,51 @@ def ask_gemini(message):
     )
 
     try:
-        with urlopen(api_request, timeout=20) as response:
+        with urlopen(api_request, timeout=30) as response:
             result = json.load(response)
-
-        candidates = result.get("candidates") or []
-        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
-        answer = "".join(
-            part.get("text", "") for part in parts if not part.get("thought")
-        ).strip()
     except HTTPError as error:
         if error.code == 429:
-            return "", "Gemini alcanzó un límite de uso. Intenta de nuevo más tarde."
-        return "", f"Gemini devolvió el error HTTP {error.code}."
+            return jsonify(error="Gemini alcanzó un límite de uso; inténtalo más tarde."), 429
+        return jsonify(error=f"Gemini devolvió HTTP {error.code}."), 502
     except (URLError, TimeoutError):
-        return "", "Luna no pudo conectar con Gemini. Intenta de nuevo."
-    except (ValueError, AttributeError, TypeError, KeyError):
-        return "", "Luna recibió una respuesta que no pudo leer."
+        return jsonify(error="No se pudo conectar con Gemini."), 502
+
+    candidates = result.get("candidates") or []
+    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+    answer = "".join(
+        part.get("text", "") for part in parts if not part.get("thought")
+    ).strip()
 
     if not answer:
-        return "", "Gemini no devolvió una respuesta de texto."
+        return jsonify(error="Gemini no devolvió una respuesta de texto."), 502
+    return jsonify(reply=answer)
 
-    return answer, ""
 
+@app.post("/api/speak")
+def speak():
+    data = request.get_json(silent=True) or {}
+    text = str(data.get("text", "")).strip()
 
-@app.post("/voz")
-def voz():
-    text = request.form.get("text", "").strip()
-    if not text or len(text) > 4000:
-        return "La respuesta debe tener entre 1 y 4000 caracteres.", 400
+    if not text:
+        return jsonify(error="No hay texto para convertir a voz."), 400
 
     api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
+
     if not api_key or not voice_id:
-        return "Revisa la clave de ElevenLabs y el ID de Bella en Render.", 503
+        return jsonify(error="Falta configurar la clave o el ID de voz de ElevenLabs en Render."), 500
 
     url = (
         "https://api.elevenlabs.io/v1/text-to-speech/"
         f"{quote(voice_id, safe='')}?output_format=mp3_44100_128"
     )
-    audio_request = Request(
+    payload = {
+        "text": text[:2000],
+        "model_id": "eleven_multilingual_v2",
+    }
+    api_request = Request(
         url,
-        data=json.dumps({
-            "text": text,
-            "model_id": "eleven_multilingual_v2",
-        }).encode("utf-8"),
+        data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
             "Accept": "audio/mpeg",
@@ -268,15 +250,15 @@ def voz():
     )
 
     try:
-        with urlopen(audio_request, timeout=20) as response:
+        with urlopen(api_request, timeout=30) as response:
             audio = response.read()
+        from flask import Response
+        return Response(audio, mimetype="audio/mpeg")
     except HTTPError as error:
-        return f"ElevenLabs devolvió el error HTTP {error.code}.", 502
+        return jsonify(error=f"ElevenLabs rechazó la solicitud (HTTP {error.code}). Revisa el acceso de la clave al texto a voz y que el ID de voz sea correcto."), 502
     except (URLError, TimeoutError):
-        return "Luna no pudo conectarse a ElevenLabs. Intenta de nuevo.", 502
+        return jsonify(error="No se pudo conectar con ElevenLabs."), 502
 
-    return Response(
-        audio,
-        mimetype="audio/mpeg",
-        headers={"Cache-Control": "no-store"},
-    )
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
